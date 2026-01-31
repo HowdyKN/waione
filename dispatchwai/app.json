@@ -1,0 +1,46 @@
+{
+  "expo": {
+    "name": "DispatchWAI",
+    "slug": "dispatchwai",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.waione.dispatchwai"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.waione.dispatchwai"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "scheme": "dispatchwai",
+    "extra": {
+      "apiUrl": "http://192.168.1.248:3000/api"
+    }
+  }
+}
+
+
+
+
+
+
+
+
+
+

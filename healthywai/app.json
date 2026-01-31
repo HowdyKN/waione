@@ -1,0 +1,38 @@
+{
+  "expo": {
+    "name": "HealthyWAI",
+    "slug": "healthywai",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.waione.healthywai"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.waione.healthywai"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "scheme": "healthywai",
+    "extra": {
+      "apiUrl": "http://192.168.1.80:3000/api"
+    }
+  }
+}
+
+
