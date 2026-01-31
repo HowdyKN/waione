@@ -1,0 +1,38 @@
+{
+  "expo": {
+    "name": "WAIGIT",
+    "slug": "waigit",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#24292e"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.waione.waigit"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#24292e"
+      },
+      "package": "com.waione.waigit"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "scheme": "waigit",
+    "extra": {
+      "githubClientId": "Ov23liyvEDxvs5YWU17Z",
+      "backendUrl": "http://192.168.1.248:3000"
+    }
+  }
+}
+
