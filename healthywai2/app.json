@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "HealthyWAI2",
+    "slug": "healthywai2",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.waione.healthywai2"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.waione.healthywai2"
+    },
+    "scheme": "healthywai2",
+    "web": {
+      "output": "single"
+    }
+  }
+}
