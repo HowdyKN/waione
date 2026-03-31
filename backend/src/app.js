@@ -18,19 +18,38 @@ const PORT = process.env.PORT || 3000;
 app.use(helmet());
 
 // CORS configuration
+const isDev = process.env.NODE_ENV !== 'production';
+const configuredOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',').map((s) => s.trim()).filter(Boolean)
+  : null;
+
 const corsOptions = {
-  origin: process.env.CORS_ORIGIN 
-    ? process.env.CORS_ORIGIN.split(',')
-    : process.env.NODE_ENV === 'development'
-    ? true // Allow all origins in development
-    : [
-        'http://localhost:19006', 
-        'http://localhost:19007',
-        'exp://localhost:8081', // Expo Go
-        'waigit://', // WAIGIT app scheme
-        'healthywai://', // HealthyWAI app scheme
-      ],
-  credentials: true,
+  origin: (origin, callback) => {
+    // Allow non-browser clients (no Origin header)
+    if (!origin) return callback(null, true);
+
+    // In non-production, allow localhost web dev servers by default.
+    if (isDev && /^http:\/\/localhost:\d+$/.test(origin)) {
+      return callback(null, true);
+    }
+
+    // If explicitly configured, allow only those origins (plus dev localhost rule above)
+    if (configuredOrigins) {
+      return callback(null, configuredOrigins.includes(origin));
+    }
+
+    // Default production allowlist
+    const allowlist = [
+      'http://localhost:19006',
+      'http://localhost:19007',
+      'exp://localhost:8081', // Expo Go
+      'waigit://', // WAIGIT app scheme
+      'healthywai://', // HealthyWAI app scheme
+    ];
+
+    return callback(null, allowlist.includes(origin));
+  },
+  credentials: false,
   optionsSuccessStatus: 200
 };
 app.use(cors(corsOptions));

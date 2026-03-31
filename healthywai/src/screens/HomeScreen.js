@@ -1,11 +1,11 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
 import { useAuth } from '../context/AuthContext';
 
 export default function HomeScreen() {
   const { user } = useAuth();
-  const navigation = useNavigation();
+  const router = useRouter();
 
   // Safety check for user object
   const userName = user?.firstName || 'Guest';
@@ -38,19 +38,11 @@ export default function HomeScreen() {
   };
 
   const handleLogin = () => {
-    // Navigate to login screen
-    if (navigation.canGoBack()) {
-      navigation.goBack();
-    }
-    // If we're in MainNavigator, we need to navigate to AuthNavigator
-    // This will be handled by the app-level navigation
+    router.push('/login');
   };
 
   const handleSignUp = () => {
-    // Navigate to register screen
-    if (navigation.canGoBack()) {
-      navigation.goBack();
-    }
+    router.push('/register');
   };
 
   return (
@@ -118,20 +110,14 @@ export default function HomeScreen() {
           <View style={styles.authButtonsContainer}>
             <TouchableOpacity 
               style={styles.loginButton} 
-              onPress={() => {
-                // Navigate to login - we'll need to handle this at app level
-                console.log('Navigate to login');
-              }}
+              onPress={handleLogin}
               activeOpacity={0.8}
             >
               <Text style={styles.loginButtonText}>Log In</Text>
             </TouchableOpacity>
             <TouchableOpacity 
               style={styles.signUpButton} 
-              onPress={() => {
-                // Navigate to sign up - we'll need to handle this at app level
-                console.log('Navigate to sign up');
-              }}
+              onPress={handleSignUp}
               activeOpacity={0.8}
             >
               <Text style={styles.signUpButtonText}>Sign Up</Text>

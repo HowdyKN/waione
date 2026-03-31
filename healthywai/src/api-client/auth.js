@@ -7,6 +7,21 @@ class AuthService {
     this.api = apiClient;
   }
 
+  _getAttemptedUrl(error) {
+    const baseURL =
+      error?.config?.baseURL ||
+      error?.response?.config?.baseURL ||
+      null;
+    const url =
+      error?.config?.url ||
+      error?.response?.config?.url ||
+      null;
+    if (!baseURL && !url) return null;
+    if (!baseURL) return url;
+    if (!url) return baseURL;
+    return `${baseURL}${url}`;
+  }
+
   /**
    * Register a new user
    * @param {Object} userData - User registration data
@@ -151,12 +166,17 @@ class AuthService {
     // Server responded with error status
     if (error.response) {
       const { status, data } = error.response;
-      const errorMessage = data?.message || this._getDefaultMessageForStatus(status);
+      const errorMessage =
+        data?.message ||
+        data?.error ||
+        this._getDefaultMessageForStatus(status);
       
       const err = new Error(errorMessage);
       err.status = status;
       err.errors = data?.errors || null;
+      err.data = data || null;
       err.response = error.response;
+      err.attemptedUrl = this._getAttemptedUrl(error);
       return err;
     }
     
@@ -176,6 +196,8 @@ class AuthService {
       err.status = 0;
       err.errors = null;
       err.request = error.request;
+      err.code = error.code;
+      err.attemptedUrl = this._getAttemptedUrl(error);
       return err;
     }
     
@@ -183,6 +205,8 @@ class AuthService {
     const err = new Error(error.message || 'An unexpected error occurred');
     err.status = 0;
     err.errors = null;
+    err.code = error.code;
+    err.attemptedUrl = this._getAttemptedUrl(error);
     return err;
   }
 

@@ -6,17 +6,24 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  Alert
+  Alert,
+  Platform
 } from 'react-native';
 import Constants from 'expo-constants';
+import { useRouter } from 'expo-router';
 import createAPIClient from '../api-client/index';
 
-const apiUrl = Constants.expoConfig?.extra?.apiUrl || 'http://localhost:3000/api';
+const apiUrl =
+  Platform.OS === 'web'
+    ? 'http://localhost:3000/api'
+    : (Constants.expoConfig?.extra?.apiUrl || 'http://localhost:3000/api');
 const apiClient = createAPIClient(apiUrl);
 
-export default function ResourcesScreen({ navigation }) {
+export default function ResourcesScreen() {
+  const router = useRouter();
   const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState(null);
 
   useEffect(() => {
     loadResources();
@@ -25,12 +32,15 @@ export default function ResourcesScreen({ navigation }) {
   const loadResources = async () => {
     try {
       setLoading(true);
+      setErrorMessage(null);
       const response = await apiClient.client.get('/resources');
       if (response.data.success) {
         setResources(response.data.data.resources || []);
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to load resources');
+      const msg = error?.response?.data?.message || error?.message || 'Failed to load resources';
+      setErrorMessage(msg);
+      Alert.alert('Error', msg);
       console.error('Load resources error:', error);
     } finally {
       setLoading(false);
@@ -40,7 +50,7 @@ export default function ResourcesScreen({ navigation }) {
   const renderItem = ({ item }) => (
     <TouchableOpacity
       style={styles.item}
-      onPress={() => navigation.navigate('ResourceDetail', { resourceId: item.id })}
+      onPress={() => router.push(`/resources/${item.id}`)}
     >
       <Text style={styles.itemTitle}>{item.name || 'Resource'}</Text>
       {item.description && (
@@ -61,6 +71,14 @@ export default function ResourcesScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
+      {errorMessage && (
+        <View style={styles.errorBanner}>
+          <Text style={styles.errorBannerText}>{errorMessage}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={loadResources}>
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      )}
       <FlatList
         data={resources}
         renderItem={renderItem}
@@ -113,6 +131,29 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     color: '#999'
+  },
+  errorBanner: {
+    backgroundColor: '#fff5f5',
+    borderBottomWidth: 1,
+    borderBottomColor: '#ffcccc',
+    padding: 12
+  },
+  errorBannerText: {
+    color: '#b00020',
+    fontSize: 14
+  },
+  retryButton: {
+    marginTop: 8,
+    alignSelf: 'flex-start',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#007AFF',
+    borderRadius: 8
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600'
   }
 });
 

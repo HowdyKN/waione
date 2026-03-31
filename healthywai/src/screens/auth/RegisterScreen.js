@@ -11,12 +11,12 @@ import {
   ScrollView,
   ActivityIndicator
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
 
 export default function RegisterScreen() {
-  const navigation = useNavigation();
-  const { register } = useAuth();
+  const router = useRouter();
+  const { register, lastError } = useAuth();
   
   const [formData, setFormData] = useState({
     firstName: '',
@@ -27,6 +27,8 @@ export default function RegisterScreen() {
   });
   
   const [errors, setErrors] = useState({});
+  const [submitError, setSubmitError] = useState(null);
+  const [statusBanner, setStatusBanner] = useState(null);
   const [loading, setLoading] = useState(false);
 
   /**
@@ -63,8 +65,10 @@ export default function RegisterScreen() {
     // Password validation
     if (!formData.password) {
       newErrors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
+    } else if (formData.password.length < 8) {
+      newErrors.password = 'Password must be at least 8 characters';
+    } else if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(formData.password)) {
+      newErrors.password = 'Password must include uppercase, lowercase, and a number';
     }
     
     // Phone validation (optional but if provided, should be valid)
@@ -85,6 +89,8 @@ export default function RegisterScreen() {
   const handleRegister = async () => {
     // Clear previous errors
     setErrors({});
+    setSubmitError(null);
+    setStatusBanner(null);
     
     // Validate form
     if (!validateForm()) {
@@ -93,6 +99,7 @@ export default function RegisterScreen() {
     }
     
     setLoading(true);
+    setStatusBanner(null);
     
     try {
       // Prepare registration data
@@ -108,33 +115,46 @@ export default function RegisterScreen() {
       const result = await register(registrationData);
       
       if (result.success) {
-        // Registration successful - user is automatically logged in
-        // Navigation will happen automatically via AuthContext
-        Alert.alert('Success', 'Account created successfully!', [
-          { text: 'OK' }
-        ]);
+        setStatusBanner({
+          type: 'success',
+          text: 'Account created successfully. Taking you to the app…'
+        });
+        Alert.alert('Success', 'Account created successfully!', [{ text: 'OK' }]);
       } else {
         // Registration failed - show error
         let errorMessage = result.message || 'Registration failed. Please try again.';
+        setSubmitError(errorMessage);
         
         // If there are validation errors from server, format them
         if (result.errors && Array.isArray(result.errors) && result.errors.length > 0) {
+          // Try to map server validation errors to fields when possible
+          const fieldErrors = {};
           const serverErrors = result.errors
             .map(err => {
               if (typeof err === 'string') return err;
-              return err.message || err.msg || `${err.param || 'Field'}: ${err.msg || err.message || 'Invalid'}`;
+              const msg = err.message || err.msg || 'Invalid';
+              const field = err.param || err.field;
+              if (field && typeof field === 'string') {
+                fieldErrors[field] = msg;
+              }
+              return field ? `${field}: ${msg}` : msg;
             })
             .join('\n');
           
           errorMessage = serverErrors || errorMessage;
+          if (Object.keys(fieldErrors).length > 0) {
+            setErrors(prev => ({ ...prev, ...fieldErrors }));
+          }
         }
         
+        setSubmitError(errorMessage);
         Alert.alert('Registration Failed', errorMessage);
       }
     } catch (error) {
       // Unexpected error
       console.error('Registration error:', error);
       const errorMessage = error.message || 'An unexpected error occurred. Please try again later.';
+      setSubmitError(errorMessage);
       Alert.alert(
         'Registration Failed',
         `Registration failed: ${errorMessage}`
@@ -149,6 +169,8 @@ export default function RegisterScreen() {
    */
   const updateField = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    if (submitError) setSubmitError(null);
+    if (statusBanner) setStatusBanner(null);
     // Clear error for this field when user starts typing
     if (errors[field]) {
       setErrors(prev => {
@@ -170,6 +192,29 @@ export default function RegisterScreen() {
       >
         <Text style={styles.title}>Create Account</Text>
         <Text style={styles.subtitle}>Sign up for HealthyWAI</Text>
+
+        {statusBanner?.type === 'success' && (
+          <View style={styles.successBox}>
+            <Text style={styles.successText}>{statusBanner.text}</Text>
+          </View>
+        )}
+
+        {(submitError || lastError?.message) && (
+          <View style={styles.submitErrorBox}>
+            <Text style={styles.submitErrorText}>
+              {submitError || lastError?.message}
+            </Text>
+            {!!lastError?.status && (
+              <Text style={styles.submitErrorMeta}>Error code: {lastError.status}</Text>
+            )}
+            {!!lastError?.attemptedUrl && (
+              <Text style={styles.submitErrorMeta}>Tried: {lastError.attemptedUrl}</Text>
+            )}
+            {!!lastError?.code && (
+              <Text style={styles.submitErrorMeta}>Network code: {lastError.code}</Text>
+            )}
+          </View>
+        )}
 
         {/* First Name */}
         <View style={styles.inputContainer}>
@@ -265,7 +310,7 @@ export default function RegisterScreen() {
         {/* Login Link */}
         <TouchableOpacity
           style={styles.linkButton}
-          onPress={() => navigation.navigate('Login')}
+          onPress={() => router.push('/login')}
           disabled={loading}
         >
           <Text style={styles.linkText}>
@@ -318,6 +363,35 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 4,
     marginLeft: 4
+  },
+  submitErrorBox: {
+    backgroundColor: '#fff5f5',
+    borderWidth: 1,
+    borderColor: '#ffcccc',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16
+  },
+  submitErrorText: {
+    color: '#b00020',
+    fontSize: 14
+  },
+  submitErrorMeta: {
+    marginTop: 6,
+    color: '#666',
+    fontSize: 12
+  },
+  successBox: {
+    backgroundColor: '#e8f5e9',
+    borderWidth: 1,
+    borderColor: '#a5d6a7',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16
+  },
+  successText: {
+    color: '#1b5e20',
+    fontSize: 14
   },
   button: {
     backgroundColor: '#007AFF',

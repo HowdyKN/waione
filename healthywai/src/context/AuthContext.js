@@ -1,11 +1,12 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const AuthContext = createContext({});
+const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children, apiClient }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [lastError, setLastError] = useState(null);
 
   /**
    * Check if user is authenticated on app load
@@ -66,21 +67,39 @@ export const AuthProvider = ({ children, apiClient }) => {
    */
   const login = async (email, password) => {
     try {
+      setLastError(null);
       const response = await apiClient.auth.login(email, password);
       
       if (response?.success && response?.data?.user) {
         setUser(response.data.user);
         return { success: true };
       }
-      
+
+      const failMessage = response?.message || 'Login failed. Please try again.';
+      setLastError({
+        message: failMessage,
+        status: response?.status ?? 0,
+        errors: response?.errors ?? null,
+        data: response ?? null,
+        code: null,
+        attemptedUrl: null
+      });
       return {
         success: false,
-        message: response?.message || 'Login failed. Please try again.'
+        message: failMessage
       };
     } catch (error) {
+      setLastError({
+        message: error?.message || 'Login failed.',
+        status: error?.status || error?.response?.status || 0,
+        errors: error?.errors || error?.response?.data?.errors || null,
+        data: error?.data || error?.response?.data || null,
+        code: error?.code || null,
+        attemptedUrl: error?.attemptedUrl || null
+      });
       return {
         success: false,
-        message: error.message || 'Login failed. Please check your credentials.'
+        message: error?.message || 'Login failed. Please check your credentials.'
       };
     }
   };
@@ -92,6 +111,7 @@ export const AuthProvider = ({ children, apiClient }) => {
    */
   const register = async (userData) => {
     try {
+      setLastError(null);
       const response = await apiClient.auth.register(userData);
       
       if (response?.success && response?.data?.user) {
@@ -113,6 +133,15 @@ export const AuthProvider = ({ children, apiClient }) => {
       const errorMessage = error.message || 'Registration failed. Please try again.';
       const errors = error.errors || error.response?.data?.errors || null;
       
+      setLastError({
+        message: errorMessage,
+        status: error?.status || error?.response?.status || 0,
+        errors,
+        data: error?.data || error?.response?.data || null,
+        code: error?.code || null,
+        attemptedUrl: error?.attemptedUrl || null
+      });
+
       return {
         success: false,
         message: errorMessage,
@@ -146,7 +175,8 @@ export const AuthProvider = ({ children, apiClient }) => {
     login,
     register,
     logout,
-    checkAuth
+    checkAuth,
+    lastError
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -154,7 +184,7 @@ export const AuthProvider = ({ children, apiClient }) => {
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
+  if (context == null) {
     throw new Error('useAuth must be used within AuthProvider');
   }
   return context;

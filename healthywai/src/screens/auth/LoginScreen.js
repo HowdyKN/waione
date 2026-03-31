@@ -9,36 +9,48 @@ import {
   KeyboardAvoidingView,
   Platform
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
 
 export default function LoginScreen() {
-  const navigation = useNavigation();
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, lastError } = useAuth();
+  const [submitError, setSubmitError] = useState(null);
+  const [statusBanner, setStatusBanner] = useState(null);
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
+      const msg = 'Please fill in all fields';
+      setStatusBanner({ type: 'error', text: msg });
+      Alert.alert('Error', msg);
       return;
     }
 
     setLoading(true);
+    setSubmitError(null);
+    setStatusBanner(null);
     try {
       const result = await login(email, password);
-      
+
       if (!result.success) {
-        Alert.alert('Login Failed', result.message || 'Invalid credentials');
+        const msg = result.message || 'Invalid credentials';
+        setSubmitError(msg);
+        setStatusBanner({ type: 'error', text: msg });
+        Alert.alert('Login Failed', msg);
+        return;
       }
+
+      setStatusBanner({ type: 'success', text: 'Signed in successfully. Loading your home…' });
     } catch (error) {
       console.error('Login error:', error);
-      Alert.alert(
-        'Login Failed',
-        `Login failed: ${error.message || 'Unable to connect to the server'}`
-      );
+      const msg = error.message || 'Unable to connect to the server';
+      setSubmitError(msg);
+      setStatusBanner({ type: 'error', text: msg });
+      Alert.alert('Login Failed', `Login failed: ${msg}`);
     } finally {
       setLoading(false);
     }
@@ -52,6 +64,29 @@ export default function LoginScreen() {
       <View style={styles.content}>
         <Text style={styles.title}>HealthyWAI1</Text>
         <Text style={styles.subtitle}>Sign in to your account</Text>
+
+        {statusBanner?.type === 'success' && (
+          <View style={styles.successBox}>
+            <Text style={styles.successText}>{statusBanner.text}</Text>
+          </View>
+        )}
+
+        {(submitError || lastError?.message || statusBanner?.type === 'error') && (
+          <View style={styles.submitErrorBox}>
+            <Text style={styles.submitErrorText}>
+              {submitError || lastError?.message || statusBanner?.text}
+            </Text>
+            {!!lastError?.status && (
+              <Text style={styles.submitErrorMeta}>Error code: {lastError.status}</Text>
+            )}
+            {!!lastError?.attemptedUrl && (
+              <Text style={styles.submitErrorMeta}>Tried: {lastError.attemptedUrl}</Text>
+            )}
+            {!!lastError?.code && (
+              <Text style={styles.submitErrorMeta}>Network code: {lastError.code}</Text>
+            )}
+          </View>
+        )}
 
         <TextInput
           style={styles.input}
@@ -94,7 +129,7 @@ export default function LoginScreen() {
 
         <TouchableOpacity
           style={styles.linkButton}
-          onPress={() => navigation.navigate('Register')}
+          onPress={() => router.push('/register')}
         >
           <Text style={styles.linkText}>
             Don't have an account? Sign up
@@ -178,6 +213,35 @@ const styles = StyleSheet.create({
   },
   linkText: {
     color: '#007AFF',
+    fontSize: 14
+  },
+  submitErrorBox: {
+    backgroundColor: '#fff5f5',
+    borderWidth: 1,
+    borderColor: '#ffcccc',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16
+  },
+  submitErrorText: {
+    color: '#b00020',
+    fontSize: 14
+  },
+  submitErrorMeta: {
+    marginTop: 6,
+    color: '#666',
+    fontSize: 12
+  },
+  successBox: {
+    backgroundColor: '#e8f5e9',
+    borderWidth: 1,
+    borderColor: '#a5d6a7',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16
+  },
+  successText: {
+    color: '#1b5e20',
     fontSize: 14
   }
 });

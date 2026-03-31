@@ -5,21 +5,26 @@ import {
   StyleSheet,
   ActivityIndicator,
   ScrollView,
-  Alert
+  Alert,
+  Platform
 } from 'react-native';
 import Constants from 'expo-constants';
+import { useLocalSearchParams } from 'expo-router';
 import createAPIClient from '../api-client/index';
 
-const apiUrl = Constants.expoConfig?.extra?.apiUrl || 'http://localhost:3000/api';
+const apiUrl =
+  Platform.OS === 'web'
+    ? 'http://localhost:3000/api'
+    : (Constants.expoConfig?.extra?.apiUrl || 'http://localhost:3000/api');
 const apiClient = createAPIClient(apiUrl);
 
-export default function ResourceDetailScreen({ route }) {
-  const { resourceId } = route.params;
+export default function ResourceDetailScreen() {
+  const { resourceId } = useLocalSearchParams();
   const [resource, setResource] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadResource();
+    if (resourceId) loadResource();
   }, [resourceId]);
 
   const loadResource = async () => {

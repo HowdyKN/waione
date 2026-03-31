@@ -1,11 +1,11 @@
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
 import { useAuth } from '../context/AuthContext';
 
 export default function LandingScreen() {
   const { user } = useAuth();
-  const navigation = useNavigation();
+  const router = useRouter();
 
   // Safety check for user object
   const userName = user?.firstName || 'Guest';
@@ -38,11 +38,11 @@ export default function LandingScreen() {
   };
 
   const handleLogin = () => {
-    navigation.navigate('Login');
+    router.push('/login');
   };
 
   const handleSignUp = () => {
-    navigation.navigate('Register');
+    router.push('/register');
   };
 
   // Debug: Log when component renders
