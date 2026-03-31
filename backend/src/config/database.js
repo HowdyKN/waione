@@ -2,6 +2,8 @@ require('dotenv').config();
 
 module.exports = {
   development: {
+    // Optional support for DATABASE_URL in local dev
+    url: process.env.DATABASE_URL,
     username: process.env.DB_USER || 'postgres',
     password: process.env.DB_PASSWORD || 'postgres',
     database: process.env.DB_NAME || 'waione_db',
@@ -17,6 +19,7 @@ module.exports = {
     }
   },
   test: {
+    url: process.env.DATABASE_URL,
     username: process.env.DB_USER || 'postgres',
     password: process.env.DB_PASSWORD || 'postgres',
     database: process.env.DB_NAME + '_test' || 'waione_db_test',
@@ -26,6 +29,10 @@ module.exports = {
     logging: false
   },
   production: {
+    // Render/Heroku-style Postgres connection string
+    // Example: postgres://user:pass@host:5432/dbname
+    use_env_variable: 'DATABASE_URL',
+    url: process.env.DATABASE_URL,
     username: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
