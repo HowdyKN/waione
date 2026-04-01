@@ -7,17 +7,12 @@ import {
   StyleSheet,
   ActivityIndicator,
   Alert,
-  Platform
 } from 'react-native';
-import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import createAPIClient from '../api-client/index';
+import { getApiBaseUrl } from '../config/apiUrl';
 
-const apiUrl =
-  Platform.OS === 'web'
-    ? 'http://localhost:3000/api'
-    : (Constants.expoConfig?.extra?.apiUrl || 'http://localhost:3000/api');
-const apiClient = createAPIClient(apiUrl);
+const apiClient = createAPIClient(getApiBaseUrl());
 
 export default function ResourcesScreen() {
   const router = useRouter();

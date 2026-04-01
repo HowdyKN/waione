@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
-import { ActivityIndicator, Platform, Text, View } from 'react-native';
-import Constants from 'expo-constants';
+import { ActivityIndicator, Text, View } from 'react-native';
 
 import createAPIClient from '../src/api-client';
+import { getApiBaseUrl } from '../src/config/apiUrl';
 import { AuthProvider, useAuth } from '../src/context/AuthContext';
 
 function LoadingScreen() {
@@ -51,12 +51,7 @@ function RootNavigator() {
 }
 
 export default function RootLayout() {
-  // Browsers must use localhost to reach the dev backend on this machine.
-  // Native devices/emulators should use LAN IP / emulator host mapping via app.json.
-  const apiUrl =
-    Platform.OS === 'web'
-      ? 'http://localhost:3000/api'
-      : (Constants.expoConfig?.extra?.apiUrl || 'http://localhost:3000/api');
+  const apiUrl = getApiBaseUrl();
 
   const apiClient = useMemo(() => {
     try {
