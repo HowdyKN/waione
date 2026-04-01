@@ -149,7 +149,8 @@ const startServer = async () => {
       console.log('Database models synchronized.');
     }
     
-    app.listen(PORT, () => {
+    // Render and other PaaS expect HTTP on process.env.PORT, bound to all interfaces.
+    app.listen(PORT, '0.0.0.0', () => {
       console.log(`Server is running on port ${PORT}`);
       console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`Health check: http://localhost:${PORT}/health`);
