@@ -190,6 +190,9 @@ class AuthService {
         errorMessage = 'Cannot connect to server. Please ensure the backend is running.';
       } else if (error.code === 'ENOTFOUND' || error.code === 'ECONNRESET') {
         errorMessage = 'Network error. Please check your internet connection.';
+      } else if (error.code === 'ERR_NETWORK') {
+        errorMessage =
+          'Unable to reach the API. If the site is deployed, confirm the backend URL and CORS settings.';
       }
       
       const err = new Error(errorMessage);

@@ -14,13 +14,28 @@ const routes = require('./routes');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+/** Strip trailing slashes so CORS_ORIGIN matches browser Origin header exactly. */
+function normalizeOrigin(origin) {
+  if (!origin || typeof origin !== 'string') return origin;
+  return origin.replace(/\/+$/, '');
+}
+
 // Security middleware
-app.use(helmet());
+// Helmet defaults to Cross-Origin-Resource-Policy: same-origin, which blocks browser
+// fetch/axios from reading API responses when the SPA is on another origin (e.g. waione-fe
+// vs waione on Render). Allow cross-origin resource use; access is still gated by CORS below.
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' }
+  })
+);
 
 // CORS configuration
 const isDev = process.env.NODE_ENV !== 'production';
 const configuredOrigins = process.env.CORS_ORIGIN
-  ? process.env.CORS_ORIGIN.split(',').map((s) => s.trim()).filter(Boolean)
+  ? process.env.CORS_ORIGIN.split(',')
+      .map((s) => normalizeOrigin(s.trim()))
+      .filter(Boolean)
   : null;
 
 const corsOptions = {
@@ -35,7 +50,7 @@ const corsOptions = {
 
     // If explicitly configured, allow only those origins (plus dev localhost rule above)
     if (configuredOrigins) {
-      return callback(null, configuredOrigins.includes(origin));
+      return callback(null, configuredOrigins.includes(normalizeOrigin(origin)));
     }
 
     // Default production allowlist
@@ -47,7 +62,7 @@ const corsOptions = {
       'healthywai://', // HealthyWAI app scheme
     ];
 
-    return callback(null, allowlist.includes(origin));
+    return callback(null, allowlist.includes(normalizeOrigin(origin)));
   },
   credentials: false,
   optionsSuccessStatus: 200
