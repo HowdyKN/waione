@@ -1,4 +1,3 @@
-import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 
 const DEFAULT_DEV = 'http://localhost:3000/api';
@@ -24,12 +23,8 @@ export function getApiBaseUrl() {
     typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_API_URL;
   if (fromEnv) return ensureApiSuffix(fromEnv);
 
-  // Same machine: browser + API on localhost. LAN in app.json breaks if IP changes or
-  // another host responds; it also avoids accidentally hitting a stale remote when testing locally.
-  if (Platform.OS === 'web') {
-    return DEFAULT_DEV;
-  }
-
+  // app.config.js merges EXPO_PUBLIC_API_URL into extra at build time — must be used on web too.
+  // Deployed sites must not fall through to localhost (browser "localhost" is the user's PC, not Render).
   const fromExtra = Constants.expoConfig?.extra?.apiUrl;
   if (fromExtra) return ensureApiSuffix(fromExtra);
 

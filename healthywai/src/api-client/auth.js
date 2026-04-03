@@ -204,7 +204,7 @@ class AuthService {
         errorMessage = 'Network error. Please check your internet connection.';
       } else if (error.code === 'ERR_NETWORK') {
         errorMessage =
-          'Unable to reach the API. If the site is deployed, confirm the backend URL and CORS settings.';
+          'Unable to reach the API. For a deployed site, set EXPO_PUBLIC_API_URL to your backend HTTPS URL when building (localhost only works on your own machine). Then confirm CORS allows this site origin.';
       }
       
       const err = new Error(errorMessage);
