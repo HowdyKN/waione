@@ -169,6 +169,17 @@ export const AuthProvider = ({ children, apiClient }) => {
     }
   };
 
+  const updateProfileAddress = useCallback(
+    async (fields) => {
+      const response = await apiClient.auth.updateProfileAddress(fields);
+      if (response?.success && response?.data?.user) {
+        setUser(response.data.user);
+      }
+      return response;
+    },
+    [apiClient]
+  );
+
   const value = {
     user,
     loading,
@@ -176,7 +187,9 @@ export const AuthProvider = ({ children, apiClient }) => {
     register,
     logout,
     checkAuth,
-    lastError
+    updateProfileAddress,
+    lastError,
+    apiClient
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

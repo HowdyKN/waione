@@ -1,7 +1,12 @@
 const express = require('express');
 const passport = require('passport');
 const authController = require('../controllers/authController');
-const { registerValidator, loginValidator, refreshTokenValidator } = require('../validators/authValidator');
+const {
+  registerValidator,
+  loginValidator,
+  refreshTokenValidator,
+  profileAddressValidator
+} = require('../validators/authValidator');
 const { authenticateToken } = require('../middleware/auth');
 
 const router = express.Router();
@@ -20,6 +25,14 @@ router.post('/logout', authenticateToken, authController.logout);
 
 // Get current user
 router.get('/me', authenticateToken, authController.getCurrentUser);
+
+// Update saved delivery address on profile
+router.patch(
+  '/me',
+  authenticateToken,
+  profileAddressValidator,
+  authController.updateProfileAddress
+);
 
 // OAuth routes
 router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));

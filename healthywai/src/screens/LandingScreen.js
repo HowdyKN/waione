@@ -32,9 +32,7 @@ export default function LandingScreen() {
   const deliveryDate = formatDate(nextSaturday);
 
   const handleOrderNow = () => {
-    // TODO: Navigate to order screen or handle order placement
-    console.log('Order Now pressed - Family Pack for', deliveryDate);
-    // You can add navigation here: navigation.navigate('OrderScreen')
+    router.push('/order/confirm');
   };
 
   const handleLogin = () => {

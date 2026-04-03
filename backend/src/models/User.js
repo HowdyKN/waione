@@ -1,4 +1,5 @@
 const bcrypt = require('bcryptjs');
+const { generateUniqueCustomerNumber } = require('../utils/customerNumber');
 
 module.exports = (sequelize, DataTypes) => {
   const User = sequelize.define('User', {
@@ -34,6 +35,40 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING,
       allowNull: true
     },
+    addressLine1: {
+      type: DataTypes.STRING(255),
+      allowNull: true
+    },
+    addressLine2: {
+      type: DataTypes.STRING(255),
+      allowNull: true
+    },
+    city: {
+      type: DataTypes.STRING(128),
+      allowNull: true
+    },
+    state: {
+      type: DataTypes.STRING(64),
+      allowNull: true
+    },
+    postalCode: {
+      type: DataTypes.STRING(32),
+      allowNull: true
+    },
+    country: {
+      type: DataTypes.STRING(64),
+      allowNull: true,
+      defaultValue: 'US'
+    },
+    customerNumber: {
+      type: DataTypes.STRING(10),
+      allowNull: false,
+      unique: true,
+      validate: {
+        len: [10, 10],
+        isNumeric: true
+      }
+    },
     isEmailVerified: {
       type: DataTypes.BOOLEAN,
       defaultValue: false
@@ -58,9 +93,18 @@ module.exports = (sequelize, DataTypes) => {
       {
         unique: true,
         fields: ['email']
+      },
+      {
+        unique: true,
+        fields: ['customerNumber']
       }
     ],
     hooks: {
+      beforeValidate: async (user) => {
+        if (user.isNewRecord && !user.customerNumber) {
+          user.customerNumber = await generateUniqueCustomerNumber(user.constructor);
+        }
+      },
       beforeCreate: async (user) => {
         if (user.password) {
           user.password = await bcrypt.hash(user.password, 10);
@@ -97,6 +141,10 @@ module.exports = (sequelize, DataTypes) => {
     User.hasMany(models.Session, {
       foreignKey: 'userId',
       as: 'sessions'
+    });
+    User.hasMany(models.Order, {
+      foreignKey: 'userId',
+      as: 'orders'
     });
   };
 

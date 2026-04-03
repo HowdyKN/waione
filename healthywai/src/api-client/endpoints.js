@@ -23,6 +23,16 @@ export const endpoints = {
     create: '/resources',
     update: (id) => `/resources/${id}`,
     delete: (id) => `/resources/${id}`
+  },
+
+  products: {
+    list: '/products'
+  },
+
+  orders: {
+    list: '/orders',
+    create: '/orders',
+    detail: (id) => `/orders/${id}`
   }
 };
 

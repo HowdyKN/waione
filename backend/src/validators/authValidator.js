@@ -44,10 +44,26 @@ const refreshTokenValidator = [
     .withMessage('Refresh token is required')
 ];
 
+const profileAddressValidator = [
+  body('addressLine1')
+    .trim()
+    .notEmpty()
+    .withMessage('Address line 1 is required'),
+  body('addressLine2').optional().trim(),
+  body('city')
+    .trim()
+    .notEmpty()
+    .withMessage('City is required'),
+  body('state').optional().trim(),
+  body('postalCode').optional().trim(),
+  body('country').optional().trim()
+];
+
 module.exports = {
   registerValidator,
   loginValidator,
-  refreshTokenValidator
+  refreshTokenValidator,
+  profileAddressValidator
 };
 
 

@@ -393,12 +393,60 @@ const handleOAuthCallback = async (req, res, next) => {
   }
 };
 
+// Update saved delivery address on user profile (default address for future orders).
+const updateProfileAddress = async (req, res, next) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: errors.array()
+      });
+    }
+
+    const { addressLine1, addressLine2, city, state, postalCode, country } = req.body;
+
+    await User.update(
+      {
+        addressLine1,
+        addressLine2: addressLine2 || null,
+        city,
+        state: state || null,
+        postalCode: postalCode || null,
+        country: country || 'US'
+      },
+      { where: { id: req.user.id } }
+    );
+
+    const user = await User.findByPk(req.user.id, {
+      attributes: { exclude: ['password'] },
+      include: [
+        {
+          model: OAuthProvider,
+          as: 'oauthProviders',
+          attributes: ['id', 'provider', 'email']
+        }
+      ]
+    });
+
+    res.json({
+      success: true,
+      message: 'Profile updated',
+      data: { user }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   register,
   login,
   refreshToken,
   logout,
   getCurrentUser,
+  updateProfileAddress,
   handleOAuthCallback
 };
 

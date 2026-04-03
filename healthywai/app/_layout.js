@@ -27,8 +27,10 @@ function RootNavigator() {
     const inAuthGroup = first === '(auth)';
     const inTabsGroup = first === '(tabs)';
 
+    const inOrderGroup = first === 'order';
+
     if (!user) {
-      if (inTabsGroup) {
+      if (inTabsGroup || inOrderGroup) {
         router.replace('/login');
       }
       return;
@@ -46,6 +48,7 @@ function RootNavigator() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(auth)" />
       <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="order" />
     </Stack>
   );
 }
@@ -66,9 +69,16 @@ export default function RootLayout() {
         auth: {
           isAuthenticated: async () => false,
           getCurrentUser: async () => ({ success: false }),
+          updateProfileAddress: async () => ({ success: false }),
           login: async () => ({ success: false, message: 'API client not initialized' }),
           register: async () => ({ success: false, message: 'API client not initialized' }),
           logout: async () => {},
+        },
+        orders: {
+          listProducts: async () => ({ success: false }),
+          createOrder: async () => ({ success: false }),
+          listOrders: async () => ({ success: false }),
+          getOrder: async () => ({ success: false }),
         },
       };
     }

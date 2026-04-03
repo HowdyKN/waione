@@ -144,6 +144,18 @@ class AuthService {
   }
 
   /**
+   * Save default delivery address on the user profile (PATCH /auth/me).
+   */
+  async updateProfileAddress(payload) {
+    try {
+      const response = await this.api.patch(endpoints.auth.me, payload);
+      return response.data;
+    } catch (error) {
+      throw this._handleError(error);
+    }
+  }
+
+  /**
    * Check if user is authenticated (has valid token)
    * @returns {Promise<boolean>} True if authenticated
    */

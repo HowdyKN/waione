@@ -34,6 +34,9 @@ const db = {};
 db.User = require('./User')(sequelize, Sequelize.DataTypes);
 db.OAuthProvider = require('./OAuthProvider')(sequelize, Sequelize.DataTypes);
 db.Session = require('./Session')(sequelize, Sequelize.DataTypes);
+db.Product = require('./Product')(sequelize, Sequelize.DataTypes);
+db.Order = require('./Order')(sequelize, Sequelize.DataTypes);
+db.OrderItem = require('./OrderItem')(sequelize, Sequelize.DataTypes);
 
 // Define associations
 Object.keys(db).forEach(modelName => {

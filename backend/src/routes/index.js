@@ -2,6 +2,8 @@ const express = require('express');
 const authRoutes = require('./auth');
 const resourceRoutes = require('./resources');
 const githubRoutes = require('./github');
+const productRoutes = require('./products');
+const orderRoutes = require('./orders');
 
 const router = express.Router();
 
@@ -19,6 +21,10 @@ router.use('/auth', authRoutes);
 
 // Resource routes (example CRUD operations)
 router.use('/resources', resourceRoutes);
+
+// Catalog & orders
+router.use('/products', productRoutes);
+router.use('/orders', orderRoutes);
 
 // GitHub OAuth routes
 router.use('/github', githubRoutes);
