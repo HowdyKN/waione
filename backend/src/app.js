@@ -31,9 +31,15 @@ app.use(
 );
 
 // CORS configuration
+// Production browsers send Origin: https://your-static-site.onrender.com — that origin must be
+// listed here or cancel/delete (and other cross-origin API calls) will fail after CORS preflight.
+// Set CORS_ORIGIN or FRONTEND_URL on the API host (comma-separated for multiple origins).
 const isDev = process.env.NODE_ENV !== 'production';
-const configuredOrigins = process.env.CORS_ORIGIN
-  ? process.env.CORS_ORIGIN.split(',')
+const corsOriginEnv =
+  process.env.CORS_ORIGIN || process.env.FRONTEND_URL || '';
+const configuredOrigins = corsOriginEnv
+  ? corsOriginEnv
+      .split(',')
       .map((s) => normalizeOrigin(s.trim()))
       .filter(Boolean)
   : null;
