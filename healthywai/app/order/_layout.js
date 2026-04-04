@@ -5,14 +5,11 @@ export default function OrderStackLayout() {
   return (
     <Stack
       screenOptions={{
-        headerShown: true,
+        headerShown: false,
         headerBackTitle: 'Back'
       }}
     >
-      <Stack.Screen
-        name="confirm"
-        options={{ title: 'Place order', headerShown: true }}
-      />
+      <Stack.Screen name="confirm" />
     </Stack>
   );
 }

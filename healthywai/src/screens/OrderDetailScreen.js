@@ -4,7 +4,9 @@ import {
   Text,
   ScrollView,
   StyleSheet,
-  ActivityIndicator
+  ActivityIndicator,
+  TouchableOpacity,
+  Alert
 } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../context/AuthContext';
@@ -17,7 +19,9 @@ export default function OrderDetailScreen() {
   const { orderId } = useLocalSearchParams();
   const { apiClient } = useAuth();
   const [order, setOrder] = useState(null);
+  const [orderDeleteCutoffDays, setOrderDeleteCutoffDays] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [cancelling, setCancelling] = useState(false);
   const [error, setError] = useState(null);
 
   const load = useCallback(async () => {
@@ -27,6 +31,9 @@ export default function OrderDetailScreen() {
       const res = await apiClient.orders.getOrder(orderId);
       if (res?.success && res?.data?.order) {
         setOrder(res.data.order);
+        setOrderDeleteCutoffDays(
+          res.data.orderDeleteCutoffDays != null ? res.data.orderDeleteCutoffDays : null
+        );
       } else {
         setError('Order not found.');
       }
@@ -36,6 +43,42 @@ export default function OrderDetailScreen() {
       setLoading(false);
     }
   }, [apiClient, orderId]);
+
+  const confirmCancel = useCallback(() => {
+    if (!order?.canDelete) return;
+    Alert.alert(
+      'Cancel order',
+      'Are you sure you want to cancel this order?',
+      [
+        { text: 'No', style: 'cancel' },
+        {
+          text: 'Yes, cancel',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setCancelling(true);
+              const res = await apiClient.orders.cancelOrder(orderId);
+              if (res?.success && res?.data?.order) {
+                setOrder(res.data.order);
+                setOrderDeleteCutoffDays(
+                  res.data.orderDeleteCutoffDays != null
+                    ? res.data.orderDeleteCutoffDays
+                    : orderDeleteCutoffDays
+                );
+                Alert.alert('Cancelled', 'Your order has been cancelled.');
+              }
+            } catch (e) {
+              const msg =
+                e.response?.data?.message || e.message || 'Please try again.';
+              Alert.alert('Could not cancel', msg);
+            } finally {
+              setCancelling(false);
+            }
+          }
+        }
+      ]
+    );
+  }, [order?.canDelete, apiClient.orders, orderId, orderDeleteCutoffDays]);
 
   useEffect(() => {
     load();
@@ -66,7 +109,29 @@ export default function OrderDetailScreen() {
       {order.deliveryWindow ? (
         <Text style={styles.meta}>Window: {order.deliveryWindow}</Text>
       ) : null}
+      {orderDeleteCutoffDays != null && order.status !== 'cancelled' ? (
+        <Text style={styles.policy}>
+          You may cancel on or before {order.cancellationDeadline || '—'} (
+          {orderDeleteCutoffDays} calendar day{orderDeleteCutoffDays === 1 ? '' : 's'} before
+          delivery).
+        </Text>
+      ) : null}
+      {order.cancellationBlockedReason && order.status !== 'cancelled' ? (
+        <Text style={styles.blocked}>{order.cancellationBlockedReason}</Text>
+      ) : null}
       <Text style={styles.total}>Total: {formatMoney(order.totalCents)}</Text>
+
+      {order.canDelete ? (
+        <TouchableOpacity
+          style={[styles.cancelBtn, cancelling && styles.cancelBtnDisabled]}
+          onPress={confirmCancel}
+          disabled={cancelling}
+        >
+          <Text style={styles.cancelBtnText}>
+            {cancelling ? 'Cancelling…' : 'Cancel order'}
+          </Text>
+        </TouchableOpacity>
+      ) : null}
 
       <Text style={styles.section}>Items</Text>
       {(order.items || []).map((line) => (
@@ -106,7 +171,19 @@ const styles = StyleSheet.create({
   errText: { color: '#b00020' },
   status: { fontSize: 18, fontWeight: '700', marginBottom: 8, textTransform: 'capitalize' },
   meta: { color: '#444', marginBottom: 4 },
+  policy: { color: '#555', fontSize: 13, marginTop: 8, lineHeight: 18 },
+  blocked: { color: '#856404', fontSize: 13, marginTop: 8, lineHeight: 18 },
   total: { fontSize: 16, fontWeight: '600', marginTop: 12, marginBottom: 16 },
+  cancelBtn: {
+    backgroundColor: '#b00020',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 8
+  },
+  cancelBtnDisabled: { opacity: 0.6 },
+  cancelBtnText: { color: '#fff', fontWeight: '600', fontSize: 16 },
   section: { fontWeight: '600', marginTop: 16, marginBottom: 8 },
   line: {
     flexDirection: 'row',

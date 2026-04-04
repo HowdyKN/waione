@@ -1,7 +1,12 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../context/AuthContext';
+import {
+  getUpcomingSaturdayOptions,
+  formatDeliveryLabel,
+  UPCOMING_SATURDAY_SLOT_COUNT
+} from '../utils/deliveryDates';
 
 export default function LandingScreen() {
   const { user } = useAuth();
@@ -10,29 +15,17 @@ export default function LandingScreen() {
   // Safety check for user object
   const userName = user?.firstName || 'Guest';
 
-  // Calculate next Saturday
-  const getNextSaturday = () => {
-    const today = new Date();
-    const dayOfWeek = today.getDay(); // 0 = Sunday, 6 = Saturday
-    const daysUntilSaturday = (6 - dayOfWeek + 7) % 7 || 7; // Next Saturday (or today if Saturday)
-    const nextSaturday = new Date(today);
-    nextSaturday.setDate(today.getDate() + daysUntilSaturday);
-    return nextSaturday;
-  };
+  const saturdayChoices = useMemo(
+    () => getUpcomingSaturdayOptions(UPCOMING_SATURDAY_SLOT_COUNT),
+    []
+  );
+  const [selectedIso, setSelectedIso] = useState(() => saturdayChoices[0]?.iso ?? '');
 
-  const formatDate = (date) => {
-    return date.toLocaleDateString('en-US', { 
-      weekday: 'long', 
-      month: 'long', 
-      day: 'numeric' 
-    });
-  };
-
-  const nextSaturday = getNextSaturday();
-  const deliveryDate = formatDate(nextSaturday);
+  const deliveryLabel = selectedIso ? formatDeliveryLabel(selectedIso) : '';
 
   const handleOrderNow = () => {
-    router.push('/order/confirm');
+    if (!selectedIso) return;
+    router.push(`/order/confirm/${selectedIso}`);
   };
 
   const handleLogin = () => {
@@ -95,8 +88,34 @@ export default function LandingScreen() {
             </View>
 
             <View style={styles.deliveryInfo}>
-              <Text style={styles.deliveryLabel}>Delivery:</Text>
-              <Text style={styles.deliveryText}>{deliveryDate} - Morning</Text>
+              <Text style={styles.deliveryLabel}>Delivery (Saturday morning)</Text>
+              <Text style={styles.deliveryHint}>
+                Pick the Saturday you want. Default is the next one; choose a later Saturday if you
+                need more lead time.
+              </Text>
+              <View style={styles.dateChips}>
+                {saturdayChoices.map(({ iso }) => {
+                  const selected = iso === selectedIso;
+                  return (
+                    <TouchableOpacity
+                      key={iso}
+                      style={[styles.dateChip, selected && styles.dateChipSelected]}
+                      onPress={() => setSelectedIso(iso)}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={[styles.dateChipText, selected && styles.dateChipTextSelected]}>
+                        {formatDeliveryLabel(iso)}
+                      </Text>
+                      <Text style={[styles.dateChipSub, selected && styles.dateChipSubSelected]}>
+                        Morning 7–10 AM
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+              <Text style={styles.deliveryText}>
+                {deliveryLabel} — Morning
+              </Text>
               <Text style={styles.deliveryNote}>Door delivery between 7:00 AM - 10:00 AM</Text>
             </View>
           </View>
@@ -232,8 +251,35 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#2c3e50',
-    marginBottom: 4
+    marginBottom: 8
   },
+  deliveryHint: {
+    fontSize: 13,
+    color: '#555',
+    lineHeight: 18,
+    marginBottom: 12
+  },
+  dateChips: { gap: 10, marginBottom: 12 },
+  dateChip: {
+    borderWidth: 2,
+    borderColor: '#c8e6c9',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: '#fff'
+  },
+  dateChipSelected: {
+    borderColor: '#4CAF50',
+    backgroundColor: '#f1f8e9'
+  },
+  dateChipText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#2c3e50'
+  },
+  dateChipTextSelected: { color: '#1b5e20' },
+  dateChipSub: { fontSize: 12, color: '#7f8c8d', marginTop: 2 },
+  dateChipSubSelected: { color: '#558b2f' },
   deliveryText: {
     fontSize: 18,
     fontWeight: 'bold',

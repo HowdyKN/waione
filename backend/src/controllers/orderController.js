@@ -2,6 +2,20 @@ const { validationResult } = require('express-validator');
 const { Op } = require('sequelize');
 const db = require('../models');
 const { Order, OrderItem, Product, User, sequelize } = db;
+const {
+  getOrderDeleteCutoffDays,
+  evaluateOrderCancellation,
+  decorateOrderForClient
+} = require('../utils/orderDeletePolicy');
+
+function normalizeDeliveryDateInput(value) {
+  if (value == null) return null;
+  if (typeof value === 'string') {
+    const m = /^(\d{4}-\d{2}-\d{2})/.exec(value.trim());
+    return m ? m[1] : null;
+  }
+  return null;
+}
 
 const orderInclude = [
   {
@@ -30,7 +44,7 @@ const createOrder = async (req, res, next) => {
 
     const {
       items,
-      deliveryDate,
+      deliveryDate: deliveryDateRaw,
       deliveryWindow,
       notes,
       addressLine1,
@@ -40,6 +54,14 @@ const createOrder = async (req, res, next) => {
       postalCode,
       country
     } = req.body;
+
+    const deliveryDate = normalizeDeliveryDateInput(deliveryDateRaw);
+    if (!deliveryDate) {
+      return res.status(400).json({
+        success: false,
+        message: 'deliveryDate must be a calendar date (YYYY-MM-DD)'
+      });
+    }
 
     const user = await User.findByPk(req.user.id, {
       attributes: ['id', 'customerNumber']
@@ -124,10 +146,14 @@ const createOrder = async (req, res, next) => {
       });
     });
 
+    const cutoffDays = getOrderDeleteCutoffDays();
     res.status(201).json({
       success: true,
       message: 'Order placed successfully',
-      data: { order: result }
+      data: {
+        order: decorateOrderForClient(result, cutoffDays),
+        orderDeleteCutoffDays: cutoffDays
+      }
     });
   } catch (error) {
     next(error);
@@ -159,10 +185,14 @@ const listMyOrders = async (req, res, next) => {
       offset
     });
 
+    const cutoffDays = getOrderDeleteCutoffDays();
+    const orders = rows.map((row) => decorateOrderForClient(row, cutoffDays));
+
     res.json({
       success: true,
       data: {
-        orders: rows,
+        orders,
+        orderDeleteCutoffDays: cutoffDays,
         pagination: {
           page,
           limit,
@@ -193,9 +223,55 @@ const getOrderById = async (req, res, next) => {
       });
     }
 
+    const cutoffDays = getOrderDeleteCutoffDays();
     res.json({
       success: true,
-      data: { order }
+      data: {
+        order: decorateOrderForClient(order, cutoffDays),
+        orderDeleteCutoffDays: cutoffDays
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const cancelOrder = async (req, res, next) => {
+  try {
+    const cutoffDays = getOrderDeleteCutoffDays();
+    const order = await Order.findOne({
+      where: {
+        id: req.params.id,
+        userId: req.user.id
+      }
+    });
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found'
+      });
+    }
+
+    const plain = order.get({ plain: true });
+    const { allowed, reason } = evaluateOrderCancellation(plain, cutoffDays);
+    if (!allowed) {
+      return res.status(403).json({
+        success: false,
+        message: reason || 'Order cannot be cancelled'
+      });
+    }
+
+    await order.update({ status: 'cancelled' });
+    const refreshed = await Order.findByPk(order.id, { include: orderInclude });
+
+    res.json({
+      success: true,
+      message: 'Order cancelled',
+      data: {
+        order: decorateOrderForClient(refreshed, cutoffDays),
+        orderDeleteCutoffDays: cutoffDays
+      }
     });
   } catch (error) {
     next(error);
@@ -205,5 +281,6 @@ const getOrderById = async (req, res, next) => {
 module.exports = {
   createOrder,
   listMyOrders,
-  getOrderById
+  getOrderById,
+  cancelOrder
 };

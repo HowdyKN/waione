@@ -25,6 +25,7 @@ export default function OrderListScreen() {
   const router = useRouter();
   const { apiClient } = useAuth();
   const [orders, setOrders] = useState([]);
+  const [orderDeleteCutoffDays, setOrderDeleteCutoffDays] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
@@ -35,8 +36,12 @@ export default function OrderListScreen() {
       const res = await apiClient.orders.listOrders(1, 20);
       if (res?.success && res?.data?.orders) {
         setOrders(res.data.orders);
+        setOrderDeleteCutoffDays(
+          res.data.orderDeleteCutoffDays != null ? res.data.orderDeleteCutoffDays : null
+        );
       } else {
         setOrders([]);
+        setOrderDeleteCutoffDays(null);
       }
     } catch (e) {
       setError(e.message || 'Failed to load orders.');
@@ -70,6 +75,12 @@ export default function OrderListScreen() {
   return (
     <View style={styles.container}>
       {error ? <Text style={styles.error}>{error}</Text> : null}
+      {orderDeleteCutoffDays != null ? (
+        <Text style={styles.policy}>
+          Cancel eligible orders on or before the date shown (policy:{' '}
+          {orderDeleteCutoffDays} day{orderDeleteCutoffDays === 1 ? '' : 's'} before delivery).
+        </Text>
+      ) : null}
       <FlatList
         data={orders}
         keyExtractor={(item) => item.id}
@@ -96,6 +107,11 @@ export default function OrderListScreen() {
             <Text style={styles.meta} numberOfLines={1}>
               Delivery {item.deliveryDate}
             </Text>
+            {item.canDelete && item.cancellationDeadline ? (
+              <Text style={styles.cancelHint} numberOfLines={2}>
+                Cancel by {item.cancellationDeadline}
+              </Text>
+            ) : null}
           </TouchableOpacity>
         )}
       />
@@ -120,5 +136,6 @@ const styles = StyleSheet.create({
   },
   status: { fontWeight: '600', textTransform: 'capitalize' },
   total: { fontWeight: '600' },
-  meta: { color: '#666', fontSize: 13, marginTop: 2 }
+  meta: { color: '#666', fontSize: 13, marginTop: 2 },
+  cancelHint: { color: '#2e7d32', fontSize: 12, marginTop: 4 }
 });

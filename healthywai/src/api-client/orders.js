@@ -26,6 +26,11 @@ class OrderApi {
     const response = await this.api.get(endpoints.orders.detail(orderId));
     return response.data;
   }
+
+  async cancelOrder(orderId) {
+    const response = await this.api.delete(endpoints.orders.cancel(orderId));
+    return response.data;
+  }
 }
 
 export default OrderApi;

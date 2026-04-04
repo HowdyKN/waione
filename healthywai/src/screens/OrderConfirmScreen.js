@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -10,36 +10,51 @@ import {
   Alert,
   Platform
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams, useSegments } from 'expo-router';
 import { useAuth } from '../context/AuthContext';
-
-function getNextSaturdayDateOnly() {
-  const today = new Date();
-  const dayOfWeek = today.getDay();
-  const daysUntilSaturday = (6 - dayOfWeek + 7) % 7 || 7;
-  const nextSaturday = new Date(today);
-  nextSaturday.setDate(today.getDate() + daysUntilSaturday);
-  return nextSaturday.toISOString().slice(0, 10);
-}
-
-function formatDeliveryLabel(isoDate) {
-  const d = new Date(`${isoDate}T12:00:00`);
-  return d.toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric'
-  });
-}
+import {
+  getNextSaturdayDateOnly,
+  getUpcomingSaturdayOptions,
+  formatDeliveryLabel,
+  parseSaturdayDeliveryParam,
+  normalizeDeliveryDateParam,
+  toDeliveryDatePayload,
+  deliveryDateFromSegments,
+  UPCOMING_SATURDAY_SLOT_COUNT
+} from '../utils/deliveryDates';
 
 export default function OrderConfirmScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams();
+  const segments = useSegments();
   const { apiClient, user, updateProfileAddress } = useAuth();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [products, setProducts] = useState([]);
   const [productId, setProductId] = useState(null);
   const [quantity, setQuantity] = useState(1);
-  const [deliveryDate] = useState(getNextSaturdayDateOnly);
+
+  /** Dynamic route [deliveryDate] + segment fallback when params lag (web). */
+  const paramDelivery = useMemo(() => {
+    const fromParams = normalizeDeliveryDateParam(params.deliveryDate);
+    if (fromParams) return fromParams;
+    return deliveryDateFromSegments(segments);
+  }, [params.deliveryDate, segments]);
+
+  const saturdayChoices = useMemo(
+    () => getUpcomingSaturdayOptions(UPCOMING_SATURDAY_SLOT_COUNT),
+    []
+  );
+
+  const [deliveryDate, setDeliveryDate] = useState(() => {
+    const parsed = parseSaturdayDeliveryParam(paramDelivery);
+    return parsed ?? getNextSaturdayDateOnly();
+  });
+
+  useEffect(() => {
+    const parsed = parseSaturdayDeliveryParam(paramDelivery);
+    if (parsed) setDeliveryDate(parsed);
+  }, [paramDelivery]);
   const [notes, setNotes] = useState('');
   const [addressLine1, setAddressLine1] = useState('');
   const [addressLine2, setAddressLine2] = useState('');
@@ -94,9 +109,14 @@ export default function OrderConfirmScreen() {
     try {
       setSubmitting(true);
       setError(null);
+      const deliveryDatePayload = toDeliveryDatePayload(deliveryDate);
+      if (!deliveryDatePayload) {
+        Alert.alert('Order', 'Please choose a delivery Saturday.');
+        return;
+      }
       const res = await apiClient.orders.createOrder({
         items: [{ productId, quantity }],
-        deliveryDate,
+        deliveryDate: deliveryDatePayload,
         deliveryWindow: 'Morning - 7:00 AM - 10:00 AM',
         notes: notes.trim() || undefined,
         addressLine1: addressLine1.trim(),
@@ -183,6 +203,29 @@ export default function OrderConfirmScreen() {
 
       <View style={styles.card}>
         <Text style={styles.sectionTitle}>Delivery</Text>
+        <Text style={styles.deliveryHint}>
+          Saturday morning windows. You can switch to the next available Saturdays.
+        </Text>
+        <View style={styles.dateChips}>
+          {saturdayChoices.map(({ iso }) => {
+            const selected = iso === deliveryDate;
+            return (
+              <TouchableOpacity
+                key={iso}
+                style={[styles.dateChip, selected && styles.dateChipSelected]}
+                onPress={() => setDeliveryDate(iso)}
+                activeOpacity={0.85}
+              >
+                <Text style={[styles.dateChipText, selected && styles.dateChipTextSelected]}>
+                  {formatDeliveryLabel(iso)}
+                </Text>
+                <Text style={[styles.dateChipSub, selected && styles.dateChipSubSelected]}>
+                  Morning 7–10 AM
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
         <Text style={styles.deliveryLine}>
           {formatDeliveryLabel(deliveryDate)} — Morning (7:00 AM – 10:00 AM)
         </Text>
@@ -295,6 +338,29 @@ const styles = StyleSheet.create({
   qtyVal: { marginHorizontal: 16, fontSize: 18, fontWeight: '600' },
   total: { marginTop: 12, fontWeight: '600' },
   sectionTitle: { fontWeight: '600', marginBottom: 8 },
+  deliveryHint: {
+    fontSize: 13,
+    color: '#666',
+    marginBottom: 10,
+    lineHeight: 18
+  },
+  dateChips: { gap: 10, marginBottom: 12 },
+  dateChip: {
+    borderWidth: 2,
+    borderColor: '#ddd',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: '#fafafa'
+  },
+  dateChipSelected: {
+    borderColor: '#007AFF',
+    backgroundColor: '#e3f2fd'
+  },
+  dateChipText: { fontSize: 15, fontWeight: '600', color: '#333' },
+  dateChipTextSelected: { color: '#0d47a1' },
+  dateChipSub: { fontSize: 12, color: '#888', marginTop: 2 },
+  dateChipSubSelected: { color: '#1565c0' },
   addressHint: {
     fontSize: 13,
     color: '#666',

@@ -32,7 +32,8 @@ export const endpoints = {
   orders: {
     list: '/orders',
     create: '/orders',
-    detail: (id) => `/orders/${id}`
+    detail: (id) => `/orders/${id}`,
+    cancel: (id) => `/orders/${id}`
   }
 };
 

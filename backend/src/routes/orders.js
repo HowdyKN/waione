@@ -14,5 +14,6 @@ router.use(authenticateToken);
 router.get('/', listOrdersQuery, orderController.listMyOrders);
 router.post('/', createOrderValidator, orderController.createOrder);
 router.get('/:id', orderIdParam, orderController.getOrderById);
+router.delete('/:id', orderIdParam, orderController.cancelOrder);
 
 module.exports = router;
