@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
-  Alert,
   Platform
 } from 'react-native';
 import { useRouter, useLocalSearchParams, useSegments } from 'expo-router';
@@ -22,6 +21,17 @@ import {
   deliveryDateFromSegments,
   UPCOMING_SATURDAY_SLOT_COUNT
 } from '../utils/deliveryDates';
+
+/**
+ * Post-checkout copy (same on web and native). Delivery is on a future Saturday—set expectations here.
+ */
+const ORDER_SUCCESS_COPY = {
+  headline: "We've got your order",
+  weekendLine: "Your weekend meals are covered—it's on us.",
+  discoveryLine:
+    'We waive your first discovery delivery on us—so you can try HealthyWAI with confidence.',
+  thanksLine: 'Thank you for making a good choice.'
+};
 
 export default function OrderConfirmScreen() {
   const router = useRouter();
@@ -62,6 +72,7 @@ export default function OrderConfirmScreen() {
   const [state, setState] = useState('');
   const [postalCode, setPostalCode] = useState('');
   const [error, setError] = useState(null);
+  const [placedSuccess, setPlacedSuccess] = useState(false);
 
   const loadProducts = useCallback(async () => {
     try {
@@ -99,11 +110,11 @@ export default function OrderConfirmScreen() {
 
   const handleSubmit = async () => {
     if (!productId || quantity < 1) {
-      Alert.alert('Order', 'Please select a product and quantity.');
+      setError('Please select a product and quantity.');
       return;
     }
     if (!addressLine1.trim() || !city.trim()) {
-      Alert.alert('Order', 'Please enter address line 1 and city.');
+      setError('Please enter address line 1 and city.');
       return;
     }
     try {
@@ -111,7 +122,8 @@ export default function OrderConfirmScreen() {
       setError(null);
       const deliveryDatePayload = toDeliveryDatePayload(deliveryDate);
       if (!deliveryDatePayload) {
-        Alert.alert('Order', 'Please choose a delivery Saturday.');
+        setError('Please choose a delivery Saturday.');
+        setSubmitting(false);
         return;
       }
       const res = await apiClient.orders.createOrder({
@@ -139,9 +151,7 @@ export default function OrderConfirmScreen() {
         } catch (profileErr) {
           console.warn('[OrderConfirm] Profile address save failed:', profileErr?.message);
         }
-        Alert.alert('Order placed', 'Thank you! Your order has been submitted.', [
-          { text: 'OK', onPress: () => router.replace('/(tabs)/orders') }
-        ]);
+        setPlacedSuccess(true);
       } else {
         setError(res?.message || 'Order failed.');
       }
@@ -162,6 +172,37 @@ export default function OrderConfirmScreen() {
         <ActivityIndicator size="large" />
         <Text style={styles.muted}>Loading…</Text>
       </View>
+    );
+  }
+
+  if (placedSuccess) {
+    const scheduledLabel = formatDeliveryLabel(deliveryDate);
+    return (
+      <ScrollView
+        style={styles.successScroll}
+        contentContainerStyle={styles.successScrollContent}
+      >
+        <View style={styles.successInner}>
+          <View style={styles.iconRing} accessibilityLabel="Order received">
+            <Text style={styles.iconCheck}>✓</Text>
+          </View>
+          <Text style={styles.successHeadline}>{ORDER_SUCCESS_COPY.headline}</Text>
+          <Text style={styles.successBody}>{ORDER_SUCCESS_COPY.weekendLine}</Text>
+          <Text style={styles.successBody}>{ORDER_SUCCESS_COPY.discoveryLine}</Text>
+          <Text style={styles.successSchedule}>
+            Your delivery is scheduled for{' '}
+            <Text style={styles.successScheduleEm}>{scheduledLabel}</Text> in your chosen morning
+            window—we will see you then.
+          </Text>
+          <Text style={styles.successThanks}>{ORDER_SUCCESS_COPY.thanksLine}</Text>
+          <TouchableOpacity
+            style={styles.submit}
+            onPress={() => router.replace('/(tabs)/orders')}
+          >
+            <Text style={styles.submitText}>View your orders</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
     );
   }
 
@@ -387,5 +428,67 @@ const styles = StyleSheet.create({
   submitDisabled: { opacity: 0.7 },
   submitText: { color: '#fff', fontSize: 16, fontWeight: '600' },
   cancel: { marginTop: 12, alignItems: 'center', padding: 8 },
-  cancelText: { color: '#007AFF' }
+  cancelText: { color: '#007AFF' },
+  successScroll: { flex: 1, backgroundColor: '#f8faf8' },
+  successScrollContent: {
+    flexGrow: 1,
+    padding: 24,
+    paddingBottom: 40,
+    justifyContent: 'center'
+  },
+  successInner: {
+    maxWidth: 440,
+    width: '100%',
+    alignSelf: 'center'
+  },
+  iconRing: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#e8f5e9',
+    borderWidth: 3,
+    borderColor: '#4CAF50',
+    justifyContent: 'center',
+    alignItems: 'center',
+    alignSelf: 'center',
+    marginBottom: 20
+  },
+  iconCheck: {
+    fontSize: 36,
+    color: '#2e7d32',
+    fontWeight: '700'
+  },
+  successHeadline: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1b5e20',
+    textAlign: 'center',
+    marginBottom: 16
+  },
+  successBody: {
+    fontSize: 16,
+    color: '#333',
+    lineHeight: 24,
+    textAlign: 'center',
+    marginBottom: 14
+  },
+  successSchedule: {
+    fontSize: 15,
+    color: '#444',
+    lineHeight: 22,
+    textAlign: 'center',
+    marginBottom: 18,
+    marginTop: 4
+  },
+  successScheduleEm: {
+    fontWeight: '700',
+    color: '#1b5e20'
+  },
+  successThanks: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2e7d32',
+    textAlign: 'center',
+    marginBottom: 28
+  }
 });
