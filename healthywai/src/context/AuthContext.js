@@ -65,6 +65,73 @@ export const AuthProvider = ({ children, apiClient }) => {
    * @param {string} password - User password
    * @returns {Promise<{success: boolean, message?: string}>}
    */
+  /**
+   * Request OTP for phone sign-in (WhatsApp first, SMS fallback).
+   */
+  const requestPhoneOtp = async (phone, preferSms = false) => {
+    try {
+      setLastError(null);
+      const response = await apiClient.auth.requestPhoneOtp(phone, preferSms);
+      if (response?.success) {
+        return { success: true, data: response.data };
+      }
+      const failMessage = response?.message || 'Could not send code.';
+      setLastError({
+        message: failMessage,
+        status: 0,
+        errors: null,
+        data: response ?? null,
+        code: null,
+        attemptedUrl: null
+      });
+      return { success: false, message: failMessage };
+    } catch (error) {
+      setLastError({
+        message: error?.message || 'Could not send code.',
+        status: error?.status || error?.response?.status || 0,
+        errors: error?.errors || null,
+        data: error?.data || null,
+        code: error?.code || null,
+        attemptedUrl: error?.attemptedUrl || null
+      });
+      return { success: false, message: error?.message || 'Could not send code.' };
+    }
+  };
+
+  /**
+   * Verify OTP and sign in (same session as email login).
+   */
+  const verifyPhoneOtp = async (phone, code) => {
+    try {
+      setLastError(null);
+      const response = await apiClient.auth.verifyPhoneOtp(phone, code);
+      if (response?.success && response?.data?.user) {
+        setUser(response.data.user);
+        return { success: true };
+      }
+      const failMessage = response?.message || 'Verification failed.';
+      setLastError({
+        message: failMessage,
+        status: 0,
+        errors: null,
+        data: response ?? null,
+        code: null,
+        attemptedUrl: null
+      });
+      return { success: false, message: failMessage };
+    } catch (error) {
+      setLastError({
+        message: error?.message || 'Verification failed.',
+        status: error?.status || error?.response?.status || 0,
+        errors: error?.errors || null,
+        data: error?.data || null,
+        code: error?.code || null,
+        attemptedUrl: error?.attemptedUrl || null
+      });
+      return { success: false, message: error?.message || 'Verification failed.' };
+    }
+  };
+
   const login = async (email, password) => {
     try {
       setLastError(null);
@@ -184,6 +251,8 @@ export const AuthProvider = ({ children, apiClient }) => {
     user,
     loading,
     login,
+    requestPhoneOtp,
+    verifyPhoneOtp,
     register,
     logout,
     checkAuth,

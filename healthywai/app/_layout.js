@@ -71,6 +71,8 @@ export default function RootLayout() {
           getCurrentUser: async () => ({ success: false }),
           updateProfileAddress: async () => ({ success: false }),
           login: async () => ({ success: false, message: 'API client not initialized' }),
+          requestPhoneOtp: async () => ({ success: false, message: 'API client not initialized' }),
+          verifyPhoneOtp: async () => ({ success: false, message: 'API client not initialized' }),
           register: async () => ({ success: false, message: 'API client not initialized' }),
           logout: async () => {},
         },

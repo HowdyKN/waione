@@ -51,6 +51,43 @@ class AuthService {
   }
 
   /**
+   * Request phone OTP (WhatsApp first, SMS fallback unless preferSms).
+   */
+  async requestPhoneOtp(phone, preferSms = false) {
+    try {
+      const response = await this.api.post(endpoints.auth.phoneRequest, {
+        phone,
+        preferSms
+      });
+      return response.data;
+    } catch (error) {
+      throw this._handleError(error);
+    }
+  }
+
+  /**
+   * Verify phone OTP and store tokens (same shape as password login).
+   */
+  async verifyPhoneOtp(phone, code, deviceInfo = null) {
+    try {
+      const response = await this.api.post(endpoints.auth.phoneVerify, {
+        phone,
+        code,
+        deviceInfo
+      });
+      if (response.data?.success && response.data?.data?.tokens) {
+        await this.api.setTokens(
+          response.data.data.tokens.accessToken,
+          response.data.data.tokens.refreshToken
+        );
+      }
+      return response.data;
+    } catch (error) {
+      throw this._handleError(error);
+    }
+  }
+
+  /**
    * Login user
    * @param {string} email - User email
    * @param {string} password - User password

@@ -5,34 +5,102 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   KeyboardAvoidingView,
-  Platform
+  Platform,
+  ScrollView,
+  Switch
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
 
+function channelHint(channel) {
+  if (channel === 'whatsapp') return 'Check WhatsApp for your code.';
+  if (channel === 'sms') return 'We sent a text (SMS) with your code.';
+  if (channel === 'simulated')
+    return 'Development mode: the code was logged on the API server.';
+  return 'If you do not receive a code, try SMS only below and request again.';
+}
+
 export default function LoginScreen() {
   const router = useRouter();
+  const [mode, setMode] = useState('phone');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [phone, setPhone] = useState('');
+  const [otp, setOtp] = useState('');
+  const [codeSent, setCodeSent] = useState(false);
+  const [preferSms, setPreferSms] = useState(false);
+  const [deliveryChannel, setDeliveryChannel] = useState(null);
   const [loading, setLoading] = useState(false);
-  const { login, lastError } = useAuth();
+  const { login, requestPhoneOtp, verifyPhoneOtp, lastError } = useAuth();
   const [submitError, setSubmitError] = useState(null);
   const [statusBanner, setStatusBanner] = useState(null);
 
+  const clearErrors = () => {
+    setSubmitError(null);
+    setStatusBanner(null);
+  };
+
+  const handleSendCode = async () => {
+    if (!phone.trim()) {
+      setSubmitError('Enter your phone number.');
+      return;
+    }
+    setLoading(true);
+    clearErrors();
+    try {
+      const result = await requestPhoneOtp(phone.trim(), preferSms);
+      if (!result.success) {
+        setSubmitError(result.message || 'Could not send code.');
+        return;
+      }
+      const ch = result.data?.channel;
+      setDeliveryChannel(ch || null);
+      setCodeSent(true);
+      setStatusBanner({
+        type: 'success',
+        text: 'Code sent. ' + channelHint(ch)
+      });
+    } catch (error) {
+      setSubmitError(error.message || 'Could not send code.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyPhone = async () => {
+    if (!otp.trim() || otp.trim().length !== 6) {
+      setSubmitError('Enter the 6-digit code.');
+      return;
+    }
+    setLoading(true);
+    clearErrors();
+    try {
+      const result = await verifyPhoneOtp(phone.trim(), otp.trim());
+      if (!result.success) {
+        setSubmitError(result.message || 'Invalid code.');
+        return;
+      }
+      setStatusBanner({
+        type: 'success',
+        text: 'Signed in successfully. Loading your home…'
+      });
+    } catch (error) {
+      setSubmitError(error.message || 'Verification failed.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleLogin = async () => {
     if (!email || !password) {
-      const msg = 'Please fill in all fields';
-      setStatusBanner({ type: 'error', text: msg });
-      Alert.alert('Error', msg);
+      setSubmitError('Please fill in all fields.');
       return;
     }
 
     setLoading(true);
-    setSubmitError(null);
-    setStatusBanner(null);
+    clearErrors();
     try {
       const result = await login(email, password);
 
@@ -40,7 +108,6 @@ export default function LoginScreen() {
         const msg = result.message || 'Invalid credentials';
         setSubmitError(msg);
         setStatusBanner({ type: 'error', text: msg });
-        Alert.alert('Login Failed', msg);
         return;
       }
 
@@ -50,7 +117,6 @@ export default function LoginScreen() {
       const msg = error.message || 'Unable to connect to the server';
       setSubmitError(msg);
       setStatusBanner({ type: 'error', text: msg });
-      Alert.alert('Login Failed', `Login failed: ${msg}`);
     } finally {
       setLoading(false);
     }
@@ -61,9 +127,14 @@ export default function LoginScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
-      <View style={styles.content}>
-        <Text style={styles.title}>HealthyWAI1</Text>
-        <Text style={styles.subtitle}>Sign in to your account</Text>
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={styles.scrollContent}
+      >
+        <Text style={styles.title}>HealthyWAI</Text>
+        <Text style={styles.subtitle}>
+          {mode === 'phone' ? 'Sign in with your phone' : 'Sign in with email'}
+        </Text>
 
         {statusBanner?.type === 'success' && (
           <View style={styles.successBox}>
@@ -88,54 +159,153 @@ export default function LoginScreen() {
           </View>
         )}
 
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoComplete="email"
-        />
+        {mode === 'phone' ? (
+          <>
+            <Text style={styles.label}>Phone number</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g. +1 555 123 4567"
+              value={phone}
+              onChangeText={setPhone}
+              keyboardType="phone-pad"
+              autoComplete="tel"
+              editable={!loading}
+            />
 
-        <View style={styles.passwordContainer}>
-          <TextInput
-            style={styles.passwordInput}
-            placeholder="Password"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry={!showPassword}
-            autoCapitalize="none"
-          />
+            <View style={styles.switchRow}>
+              <Text style={styles.switchLabel}>SMS only (no WhatsApp)</Text>
+              <Switch value={preferSms} onValueChange={setPreferSms} />
+            </View>
+
+            {!codeSent ? (
+              <TouchableOpacity
+                style={[styles.button, loading && styles.buttonDisabled]}
+                onPress={handleSendCode}
+                disabled={loading}
+              >
+                <Text style={styles.buttonText}>
+                  {loading ? 'Sending…' : 'Send code'}
+                </Text>
+              </TouchableOpacity>
+            ) : (
+              <>
+                {deliveryChannel ? (
+                  <Text style={styles.channelNote}>{channelHint(deliveryChannel)}</Text>
+                ) : null}
+                <Text style={styles.label}>6-digit code</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="000000"
+                  value={otp}
+                  onChangeText={setOtp}
+                  keyboardType="number-pad"
+                  maxLength={6}
+                  editable={!loading}
+                />
+                <TouchableOpacity
+                  style={[styles.button, loading && styles.buttonDisabled]}
+                  onPress={handleVerifyPhone}
+                  disabled={loading}
+                >
+                  <Text style={styles.buttonText}>
+                    {loading ? 'Verifying…' : 'Verify and sign in'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.linkButton}
+                  onPress={() => {
+                    setCodeSent(false);
+                    setOtp('');
+                    setDeliveryChannel(null);
+                    clearErrors();
+                  }}
+                >
+                  <Text style={styles.linkText}>Use a different number</Text>
+                </TouchableOpacity>
+              </>
+            )}
+
+            <TouchableOpacity
+              style={styles.linkButton}
+              onPress={() => {
+                setMode('email');
+                clearErrors();
+              }}
+            >
+              <Text style={styles.linkText}>Use email and password instead</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <>
+            <TextInput
+              style={styles.input}
+              placeholder="Email"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoComplete="email"
+            />
+
+            <View style={styles.passwordContainer}>
+              <TextInput
+                style={styles.passwordInput}
+                placeholder="Password"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+              />
+              <TouchableOpacity
+                style={styles.passwordToggle}
+                onPress={() => setShowPassword(!showPassword)}
+              >
+                <Text style={styles.passwordToggleText}>
+                  {showPassword ? 'Hide' : 'Show'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              style={[styles.button, loading && styles.buttonDisabled]}
+              onPress={handleLogin}
+              disabled={loading}
+            >
+              <Text style={styles.buttonText}>
+                {loading ? 'Signing in...' : 'Sign In'}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.linkButton}
+              onPress={() => {
+                setMode('phone');
+                clearErrors();
+              }}
+            >
+              <Text style={styles.linkText}>Sign in with phone instead</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.linkButton}
+              onPress={() => router.push('/register')}
+            >
+              <Text style={styles.linkText}>
+                Don&apos;t have an account? Sign up
+              </Text>
+            </TouchableOpacity>
+          </>
+        )}
+
+        {mode === 'phone' ? (
           <TouchableOpacity
-            style={styles.passwordToggle}
-            onPress={() => setShowPassword(!showPassword)}
+            style={styles.linkButton}
+            onPress={() => router.push('/register')}
           >
-            <Text style={styles.passwordToggleText}>
-              {showPassword ? 'Hide' : 'Show'}
-            </Text>
+            <Text style={styles.linkText}>Don&apos;t have an account? Sign up</Text>
           </TouchableOpacity>
-        </View>
-
-        <TouchableOpacity
-          style={[styles.button, loading && styles.buttonDisabled]}
-          onPress={handleLogin}
-          disabled={loading}
-        >
-          <Text style={styles.buttonText}>
-            {loading ? 'Signing in...' : 'Sign In'}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.linkButton}
-          onPress={() => router.push('/register')}
-        >
-          <Text style={styles.linkText}>
-            Don't have an account? Sign up
-          </Text>
-        </TouchableOpacity>
-      </View>
+        ) : null}
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -145,10 +315,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fff'
   },
-  content: {
-    flex: 1,
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
-    padding: 20
+    padding: 20,
+    paddingVertical: 32
   },
   title: {
     fontSize: 32,
@@ -159,8 +330,14 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 16,
     color: '#666',
-    marginBottom: 32,
+    marginBottom: 24,
     textAlign: 'center'
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8
   },
   input: {
     borderWidth: 1,
@@ -169,6 +346,24 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 16,
     fontSize: 16
+  },
+  switchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 20
+  },
+  switchLabel: {
+    fontSize: 14,
+    color: '#444',
+    flex: 1,
+    paddingRight: 12
+  },
+  channelNote: {
+    fontSize: 13,
+    color: '#555',
+    marginBottom: 12,
+    lineHeight: 18
   },
   passwordContainer: {
     flexDirection: 'row',
@@ -245,5 +440,3 @@ const styles = StyleSheet.create({
     fontSize: 14
   }
 });
-
-

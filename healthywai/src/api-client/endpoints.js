@@ -5,6 +5,8 @@ export const endpoints = {
   auth: {
     register: '/auth/register',
     login: '/auth/login',
+    phoneRequest: '/auth/phone/request',
+    phoneVerify: '/auth/phone/verify',
     logout: '/auth/logout',
     refresh: '/auth/refresh',
     me: '/auth/me',
