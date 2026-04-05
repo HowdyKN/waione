@@ -3,13 +3,19 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
+  Pressable,
   StyleSheet,
   Alert,
+  Platform,
   ScrollView,
   ActivityIndicator
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+
+function confirmLogoutWeb() {
+  if (typeof window === 'undefined') return false;
+  return window.confirm('Are you sure you want to logout?');
+}
 
 export default function ProfileScreen() {
   const { user, logout, updateProfileAddress } = useAuth();
@@ -29,7 +35,13 @@ export default function ProfileScreen() {
     setPostalCode(user.postalCode || '');
   }, [user]);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    // Alert.alert is a no-op on many react-native-web builds; use a real browser confirm.
+    if (Platform.OS === 'web') {
+      if (!confirmLogoutWeb()) return;
+      await logout();
+      return;
+    }
     Alert.alert(
       'Logout',
       'Are you sure you want to logout?',
@@ -81,7 +93,11 @@ export default function ProfileScreen() {
   ]);
 
   return (
-    <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={styles.container}
+      keyboardShouldPersistTaps="handled"
+    >
       <View style={styles.profileSection}>
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>
@@ -258,6 +274,13 @@ const styles = StyleSheet.create({
   btnDisabled: {
     opacity: 0.7
   },
+  btnPressed: {
+    opacity: 0.88
+  },
+  pressableWeb: Platform.select({
+    web: { cursor: 'pointer', userSelect: 'none' },
+    default: {}
+  }),
   saveAddressBtnText: {
     color: '#fff',
     fontSize: 16,
