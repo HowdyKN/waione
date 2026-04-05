@@ -60,7 +60,12 @@ export default function ProfileScreen() {
 
   const saveDefaultAddress = useCallback(async () => {
     if (!addressLine1.trim() || !city.trim()) {
-      Alert.alert('Default address', 'Address line 1 and city are required.');
+      const msg = 'Address line 1 and city are required.';
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        window.alert(`Default address\n\n${msg}`);
+      } else {
+        Alert.alert('Default address', msg);
+      }
       return;
     }
     try {
@@ -74,12 +79,27 @@ export default function ProfileScreen() {
         country: 'US'
       });
       if (res?.success) {
-        Alert.alert('Saved', 'Your default delivery address has been updated.');
+        const okMsg = 'Your default delivery address has been updated.';
+        if (Platform.OS === 'web' && typeof window !== 'undefined') {
+          window.alert(okMsg);
+        } else {
+          Alert.alert('Saved', okMsg);
+        }
       } else {
-        Alert.alert('Could not save', res?.message || 'Please try again.');
+        const errMsg = res?.message || 'Please try again.';
+        if (Platform.OS === 'web' && typeof window !== 'undefined') {
+          window.alert(`Could not save\n\n${errMsg}`);
+        } else {
+          Alert.alert('Could not save', errMsg);
+        }
       }
     } catch (e) {
-      Alert.alert('Error', e.message || 'Could not save address.');
+      const errMsg = e.message || 'Could not save address.';
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        window.alert(`Error\n\n${errMsg}`);
+      } else {
+        Alert.alert('Error', errMsg);
+      }
     } finally {
       setSavingAddress(false);
     }
@@ -169,8 +189,14 @@ export default function ProfileScreen() {
           value={postalCode}
           onChangeText={setPostalCode}
         />
-        <TouchableOpacity
-          style={[styles.saveAddressBtn, savingAddress && styles.btnDisabled]}
+        <Pressable
+          accessibilityRole="button"
+          style={({ pressed }) => [
+            styles.saveAddressBtn,
+            styles.pressableWeb,
+            savingAddress && styles.btnDisabled,
+            pressed && !savingAddress && styles.btnPressed
+          ]}
           onPress={saveDefaultAddress}
           disabled={savingAddress}
         >
@@ -179,12 +205,20 @@ export default function ProfileScreen() {
           ) : (
             <Text style={styles.saveAddressBtnText}>Save default address</Text>
           )}
-        </TouchableOpacity>
+        </Pressable>
       </View>
 
-      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+      <Pressable
+        accessibilityRole="button"
+        style={({ pressed }) => [
+          styles.logoutButton,
+          styles.pressableWeb,
+          pressed && styles.btnPressed
+        ]}
+        onPress={handleLogout}
+      >
         <Text style={styles.logoutButtonText}>Logout</Text>
-      </TouchableOpacity>
+      </Pressable>
     </ScrollView>
   );
 }
