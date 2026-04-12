@@ -49,7 +49,7 @@ module.exports = {
         'FAMILY-PACK-001',
         'Family Pack',
         'Fresh organic fruits & vegetables, whole grains, protein, healthy snacks — portions for 4–6 people.',
-        9999,
+        599,
         true,
         NOW(),
         NOW()
