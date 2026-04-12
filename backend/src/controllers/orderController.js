@@ -107,12 +107,13 @@ const createOrder = async (req, res, next) => {
       });
     }
 
-    const result = await sequelize.transaction(async (t) => {
+      const result = await sequelize.transaction(async (t) => {
       const order = await Order.create(
         {
           userId: user.id,
           customerNumber: user.customerNumber,
           status: 'pending',
+          paymentStatus: 'unpaid',
           deliveryDate,
           deliveryWindow: deliveryWindow || null,
           totalCents,

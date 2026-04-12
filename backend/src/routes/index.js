@@ -4,6 +4,7 @@ const resourceRoutes = require('./resources');
 const githubRoutes = require('./github');
 const productRoutes = require('./products');
 const orderRoutes = require('./orders');
+const paymentRoutes = require('./payments');
 
 const router = express.Router();
 
@@ -25,6 +26,7 @@ router.use('/resources', resourceRoutes);
 // Catalog & orders
 router.use('/products', productRoutes);
 router.use('/orders', orderRoutes);
+router.use('/payments', paymentRoutes);
 
 // GitHub OAuth routes
 router.use('/github', githubRoutes);

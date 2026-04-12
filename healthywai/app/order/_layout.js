@@ -10,6 +10,7 @@ export default function OrderStackLayout() {
       }}
     >
       <Stack.Screen name="confirm" />
+      <Stack.Screen name="payment-return" />
     </Stack>
   );
 }

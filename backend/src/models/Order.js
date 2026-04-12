@@ -68,6 +68,26 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING(64),
         allowNull: false,
         defaultValue: 'US'
+      },
+      paymentStatus: {
+        type: DataTypes.STRING(32),
+        allowNull: false,
+        defaultValue: 'unpaid',
+        validate: {
+          isIn: [['unpaid', 'paid', 'failed', 'refunded']]
+        }
+      },
+      stripeCheckoutSessionId: {
+        type: DataTypes.STRING(255),
+        allowNull: true
+      },
+      stripePaymentIntentId: {
+        type: DataTypes.STRING(255),
+        allowNull: true
+      },
+      paidAt: {
+        type: DataTypes.DATE,
+        allowNull: true
       }
     },
     {

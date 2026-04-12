@@ -36,6 +36,12 @@ export const endpoints = {
     create: '/orders',
     detail: (id) => `/orders/${id}`,
     cancel: (id) => `/orders/${id}`
+  },
+
+  payments: {
+    config: '/payments/config',
+    embeddedCheckout: '/payments/embedded-checkout',
+    syncCheckoutSession: '/payments/sync-checkout-session'
   }
 };
 

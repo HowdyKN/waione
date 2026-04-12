@@ -10,9 +10,17 @@ require('./config/passport');
 
 const { sequelize } = require('./models');
 const routes = require('./routes');
+const stripeWebhookController = require('./controllers/stripeWebhookController');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Stripe webhooks require the raw body for signature verification (must be before express.json).
+app.post(
+  '/api/webhooks/stripe',
+  express.raw({ type: 'application/json' }),
+  stripeWebhookController.handleStripeWebhook
+);
 
 /** Strip trailing slashes so CORS_ORIGIN matches browser Origin header exactly. */
 function normalizeOrigin(origin) {

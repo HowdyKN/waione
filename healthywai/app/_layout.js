@@ -82,6 +82,11 @@ export default function RootLayout() {
           listOrders: async () => ({ success: false }),
           getOrder: async () => ({ success: false }),
         },
+        payments: {
+          getConfig: async () => ({ success: false }),
+          createEmbeddedCheckout: async () => ({ success: false }),
+          syncCheckoutSession: async () => ({ success: false }),
+        },
       };
     }
   }, [apiUrl]);

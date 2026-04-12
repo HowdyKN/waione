@@ -21,23 +21,18 @@ import {
   deliveryDateFromSegments,
   UPCOMING_SATURDAY_SLOT_COUNT
 } from '../utils/deliveryDates';
-
-/**
- * Post-checkout copy (same on web and native). Delivery is on a future Saturday—set expectations here.
- */
-const ORDER_SUCCESS_COPY = {
-  headline: "We've got your order",
-  weekendLine: "Your weekend meals are covered—it's on us.",
-  discoveryLine:
-    'We waive your first discovery delivery on us—so you can try HealthyWAI with confidence.',
-  thanksLine: 'Thank you for making a good choice.'
-};
+import { ORDER_SUCCESS_COPY } from '../constants/orderSuccessCopy';
+import OrderPaymentCheckout from '../components/OrderPaymentCheckout';
 
 export default function OrderConfirmScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const segments = useSegments();
   const { apiClient, user, updateProfileAddress } = useAuth();
+  const [paymentConfig, setPaymentConfig] = useState(null);
+  const [checkoutPhase, setCheckoutPhase] = useState('form');
+  const [paySecrets, setPaySecrets] = useState(null);
+  const [savedOrder, setSavedOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [products, setProducts] = useState([]);
@@ -97,6 +92,25 @@ export default function OrderConfirmScreen() {
   }, [loadProducts]);
 
   useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await apiClient.payments.getConfig();
+        if (!cancelled && res?.success && res?.data) {
+          setPaymentConfig(res.data);
+        }
+      } catch {
+        if (!cancelled) {
+          setPaymentConfig({ stripePaymentsEnabled: false, publishableKey: null });
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [apiClient]);
+
+  useEffect(() => {
     if (!user) return;
     if (user.addressLine1) setAddressLine1(user.addressLine1);
     if (user.addressLine2) setAddressLine2(user.addressLine2);
@@ -139,6 +153,8 @@ export default function OrderConfirmScreen() {
         country: 'US'
       });
       if (res?.success) {
+        const order = res?.data?.order;
+        setSavedOrder(order || null);
         try {
           await updateProfileAddress({
             addressLine1: addressLine1.trim(),
@@ -151,7 +167,32 @@ export default function OrderConfirmScreen() {
         } catch (profileErr) {
           console.warn('[OrderConfirm] Profile address save failed:', profileErr?.message);
         }
-        setPlacedSuccess(true);
+
+        const needCard =
+          paymentConfig?.stripePaymentsEnabled &&
+          order &&
+          order.totalCents > 0 &&
+          order.paymentStatus === 'unpaid';
+
+        if (needCard && Platform.OS === 'web') {
+          try {
+            const payRes = await apiClient.payments.createEmbeddedCheckout(order.id);
+            if (payRes?.success && payRes?.data?.clientSecret && payRes?.data?.publishableKey) {
+              setPaySecrets({
+                clientSecret: payRes.data.clientSecret,
+                publishableKey: payRes.data.publishableKey
+              });
+              setCheckoutPhase('pay');
+              return;
+            }
+            setError(payRes?.message || 'Could not start card checkout.');
+          } catch (pe) {
+            setError(pe.message || 'Could not start card checkout.');
+          }
+          return;
+        }
+
+        setCheckoutPhase('success');
       } else {
         setError(res?.message || 'Order failed.');
       }
@@ -175,8 +216,37 @@ export default function OrderConfirmScreen() {
     );
   }
 
-  if (placedSuccess) {
-    const scheduledLabel = formatDeliveryLabel(deliveryDate);
+  if (checkoutPhase === 'pay' && Platform.OS === 'web' && paySecrets) {
+    return (
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        <Text style={styles.title}>Complete payment</Text>
+        <Text style={styles.payLead}>
+          Your order is saved. Enter your card in the secure form below. When finished, you will
+          return here to confirm.
+        </Text>
+        <OrderPaymentCheckout
+          publishableKey={paySecrets.publishableKey}
+          clientSecret={paySecrets.clientSecret}
+        />
+      </ScrollView>
+    );
+  }
+
+  if (checkoutPhase === 'success') {
+    const scheduledLabel = formatDeliveryLabel(
+      savedOrder?.deliveryDate ? String(savedOrder.deliveryDate).slice(0, 10) : deliveryDate
+    );
+    const showUnpaidNative =
+      Platform.OS !== 'web' &&
+      paymentConfig?.stripePaymentsEnabled &&
+      savedOrder?.paymentStatus === 'unpaid' &&
+      savedOrder?.totalCents > 0;
+
+    const showUnpaidNoStripe =
+      savedOrder?.paymentStatus === 'unpaid' &&
+      !paymentConfig?.stripePaymentsEnabled &&
+      savedOrder?.totalCents > 0;
+
     return (
       <ScrollView
         style={styles.successScroll}
@@ -187,6 +257,15 @@ export default function OrderConfirmScreen() {
             <Text style={styles.iconCheck}>✓</Text>
           </View>
           <Text style={styles.successHeadline}>{ORDER_SUCCESS_COPY.headline}</Text>
+          {showUnpaidNoStripe ? (
+            <Text style={styles.devUnpaidNote}>
+              Card capture is not configured on the server yet—your order is saved as unpaid until
+              Stripe keys and webhooks are set up.
+            </Text>
+          ) : null}
+          {showUnpaidNative ? (
+            <OrderPaymentCheckout orderId={savedOrder.id} />
+          ) : null}
           <Text style={styles.successBody}>{ORDER_SUCCESS_COPY.weekendLine}</Text>
           <Text style={styles.successBody}>{ORDER_SUCCESS_COPY.discoveryLine}</Text>
           <Text style={styles.successSchedule}>
@@ -349,6 +428,22 @@ const styles = StyleSheet.create({
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   muted: { marginTop: 8, color: '#666' },
   title: { fontSize: 22, fontWeight: '700', marginBottom: 16 },
+  payLead: {
+    fontSize: 14,
+    color: '#444',
+    lineHeight: 20,
+    marginBottom: 12
+  },
+  devUnpaidNote: {
+    fontSize: 13,
+    color: '#856404',
+    backgroundColor: '#fff3cd',
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 14,
+    lineHeight: 18,
+    textAlign: 'center'
+  },
   card: {
     borderWidth: 1,
     borderColor: '#eee',
