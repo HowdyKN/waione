@@ -153,7 +153,7 @@ const createEmbeddedCheckoutSession = async (req, res) => {
       success: true,
       data: {
         clientSecret: session.client_secret,
-        publishableKey,
+        publishableKey: publishable,
         sessionId: session.id,
         orderId: order.id
       }

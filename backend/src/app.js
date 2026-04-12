@@ -15,6 +15,10 @@ const stripeWebhookController = require('./controllers/stripeWebhookController')
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Render (and most PaaS) sit behind a reverse proxy and set X-Forwarded-* headers.
+// Required so express-rate-limit can derive client IP without throwing ERR_ERL_UNEXPECTED_X_FORWARDED_FOR.
+app.set('trust proxy', Number(process.env.TRUST_PROXY_HOPS) || 1);
+
 // Stripe webhooks require the raw body for signature verification (must be before express.json).
 app.post(
   '/api/webhooks/stripe',
